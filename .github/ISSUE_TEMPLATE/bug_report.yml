@@ -1,0 +1,26 @@
+name: 🐞 Bug Report
+description: แจ้งปัญหาที่พบในการใช้งาน MeeChain
+title: "[BUG] - "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ขอบคุณที่ช่วยแจ้งบั๊ก! กรุณากรอกข้อมูลด้านล่างให้ครบถ้วน
+  - type: input
+    id: environment
+    attributes:
+      label: สภาพแวดล้อม
+      description: เช่น OS, Browser, Wallet ที่ใช้
+  - type: textarea
+    id: steps
+    attributes:
+      label: ขั้นตอนที่ทำให้เกิดปัญหา
+  - type: textarea
+    id: expected
+    attributes:
+      label: สิ่งที่คาดหวัง
+  - type: textarea
+    id: actual
+    attributes:
+      label: สิ่งที่เกิดขึ้นจริง

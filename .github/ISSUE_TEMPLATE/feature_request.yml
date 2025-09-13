@@ -1,0 +1,21 @@
+name: 🚀 Feature Request
+description: เสนอฟีเจอร์ใหม่สำหรับ MeeChain
+title: "[FEATURE] - "
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ขอบคุณที่เสนอไอเดีย! MeeBot พร้อมรับฟังทุกความคิดสร้างสรรค์
+  - type: input
+    id: summary
+    attributes:
+      label: สรุปฟีเจอร์ที่ต้องการ
+  - type: textarea
+    id: details
+    attributes:
+      label: รายละเอียดเพิ่มเติม
+  - type: textarea
+    id: benefit
+    attributes:
+      label: MeeChain จะได้ประโยชน์อย่างไร

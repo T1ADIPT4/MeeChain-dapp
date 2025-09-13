@@ -1,0 +1,18 @@
+name: Deploy Contracts
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install dependencies
+        run: npm install
+      - name: Deploy to Polygon
+        run: npx hardhat run scripts/deploy.js --network polygon
+        env:
+          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+          INFURA_URL: ${{ secrets.INFURA_URL }}
