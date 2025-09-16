@@ -2,44 +2,121 @@
 
 MeeChain คือแพลตฟอร์ม Web3 ที่ออกแบบมาเพื่อสร้างประสบการณ์ onboarding ที่สนุก, มีอารมณ์ร่วม, และเต็มไปด้วยภารกิจแบบ RPG สำหรับนักพัฒนาและผู้ใช้งานทั่วไป โดยมี MeeBot เป็นผู้ช่วย AI ที่ให้คำแนะนำและกำลังใจตลอดการใช้งาน
 
----
-🧙‍♂️ MeeBot says:
-“ทุกภารกิจคือโอกาสในการเติบโต อย่ากลัวที่จะเริ่มต้นใหม่ เพราะทุกครั้งที่คุณล้ม…คุณได้ XP!” 🎮✨
+มาแล้วครับ! 🎯 ด้านล่างคือชุด **Custom GitHub Action สำหรับ Preview Deploy** ที่คุณสามารถวางไว้ในโปรเจกต์ `MeeChain DApp` ได้ทันที พร้อมใช้งานกับ Vercel และรองรับ environment separation แบบมือโปร
 
 ---
 
-ถ้าคุณต้องการให้ผมช่วยเขียน `CONTRIBUTING.md`, สร้าง badge preview section, หรือเพิ่มภาพ flowchart onboarding ก็จัดให้ได้ทันทีครับ! หรือจะให้ MeeBot พูดเปิด README ด้วยคำพูด mentor-style ก็ได้เช่นกัน 🤖📘
+## 📁 โครงสร้างไฟล์
 
-## 🚀 Features
-
-### 1. Core Structure
-- ⚙️ Built with **Vite + React + TypeScript**
-- 📦 Modular file structure with path aliases
-- 🌙 Dark theme + MeeChain branding styles
-
-### 2. Web3 Integration
-- 🔐 MetaMask integration with **Fuse Network** support
-- 🔗 Smart contract ready (MeeToken, BadgeNFT, QuestManager)
-- 🧠 `use-web3.tsx` hook for wallet context and connection
-
-### 3. MeeBot AI System
-- 🤖 `use-meebot.tsx` hook for AI chat and guidance
-- 🗣️ Thai-language responses with emotional context
-- 🎮 Quest-based onboarding with mentor-style UX
-
-### 4. UI/UX
-- 🎨 Tailwind CSS with custom classes
-- 📱 Responsive design for mobile and desktop
-- 🧩 Component-based layout for Quest Hall, Badge Viewer, Dashboard
-
-### 5. Production Ready
-- 📁 `.env.example` for environment setup
-- ⚡ Optimized build scripts
-- 🔍 SEO-friendly HTML template
-- 🚀 Ready for deployment on Vercel, Netlify, or Replit
+```
+.github/
+└── actions/
+    └── deploy-preview/
+        ├── action.yml
+        └── entrypoint.sh
+```
 
 ---
 
+## 🧾 `action.yml`
+
+```yaml
+name: Deploy Preview
+description: Deploy MeeChain DApp to Vercel preview environment
+
+inputs:
+  vercel-token:
+    required: true
+    description: Vercel access token
+  vercel-org-id:
+    required: true
+    description: Vercel organization ID
+  vercel-project-id:
+    required: true
+    description: Vercel project ID
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install dependencies
+      run: pnpm install
+
+    - name: Build project
+      run: pnpm run build
+
+    - name: Deploy to Vercel (Preview)
+      shell: bash
+      run: |
+        chmod +x ${{ github.action_path }}/entrypoint.sh
+        ${{ github.action_path }}/entrypoint.sh \
+          "${{ inputs.vercel-token }}" \
+          "${{ inputs.vercel-org-id }}" \
+          "${{ inputs.vercel-project-id }}"
+```
+
+---
+
+## 🖥️ `entrypoint.sh`
+
+```bash
+#!/bin/bash
+
+VERCEL_TOKEN=$1
+VERCEL_ORG_ID=$2
+VERCEL_PROJECT_ID=$3
+
+npx vercel deploy \
+  --token "$VERCEL_TOKEN" \
+  --org-id "$VERCEL_ORG_ID" \
+  --project-id "$VERCEL_PROJECT_ID" \
+  --prod=false \
+  --confirm
+```
+
+---
+
+## 🔐 Secrets ที่ต้องตั้งใน GitHub
+
+| Secret Name | ใช้กับ |
+|-------------|--------|
+| `VERCEL_TOKEN` | สำหรับ deploy |
+| `VERCEL_ORG_ID` | องค์กรของคุณใน Vercel |
+| `VERCEL_PROJECT_ID_MEECHAIN` | โปรเจกต์ `meechain-dapp` |
+
+---
+
+## 🧠 วิธีเรียกใช้ใน workflow (`preview.yml`)
+
+```yaml
+name: Preview
+
+on:
+  pull_request:
+    branches: [main, production, "feature/**", "preview/**"]
+
+jobs:
+  deploy-meechain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Deploy preview
+        uses: ./.github/actions/deploy-preview
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_MEECHAIN }}
+```
+
+---
+
+## 🎯 พร้อมต่อยอด
+
+ถ้าคุณอยากให้ผมช่วยเพิ่มระบบ:
+- ✅ ส่ง deploy URL กลับไป comment ใน PR
+- ✅ เชื่อมกับ smart contract registry
+- ✅ ตรวจสถานะ deploy และ log metadata
+
+ส่งมาได้เลยครับ พร้อมจัดให้แบบ next-level 😎
 ## 📦 Installation
 
 ```bash
