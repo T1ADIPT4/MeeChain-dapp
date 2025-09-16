@@ -1,0 +1,41 @@
+name: Deploy all dapps
+
+on:
+  push:
+    branches:
+      - main
+      - production
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app:
+          - name: mechanic-dapp
+            path: apps/mechanic-dapp
+            secret: VERCEL_PROJECT_ID_MECHANIC
+          - name: project-koi
+            path: apps/project-koi
+            secret: VERCEL_PROJECT_ID_PROJECT_KOI
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build ${{ matrix.app.name }}
+        run: pnpm run build
+        working-directory: ${{ matrix.app.path }}
+
+      - name: Deploy ${{ matrix.app.name }} to Vercel
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets[matrix.app.secret] }}
+          vercel-args: '--prod'
+        env:
+          VERCEL_SCOPE: ${{ secrets.VERCEL_SCOPE }}
