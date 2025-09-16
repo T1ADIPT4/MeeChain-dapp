@@ -1,0 +1,31 @@
+name: Deploy Preview
+description: Deploy MeeChain DApp to Vercel preview environment
+
+inputs:
+  vercel-token:
+    required: true
+    description: Vercel access token
+  vercel-org-id:
+    required: true
+    description: Vercel organization ID
+  vercel-project-id:
+    required: true
+    description: Vercel project ID
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install dependencies
+      run: pnpm install
+
+    - name: Build project
+      run: pnpm run build
+
+    - name: Deploy to Vercel (Preview)
+      shell: bash
+      run: |
+        chmod +x ${{ github.action_path }}/entrypoint.sh
+        ${{ github.action_path }}/entrypoint.sh \
+          "${{ inputs.vercel-token }}" \
+          "${{ inputs.vercel-org-id }}" \
+          "${{ inputs.vercel-project-id }}"
