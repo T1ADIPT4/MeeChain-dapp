@@ -5,6 +5,10 @@ on:
     branches:
       - main
       - production
+      
+defaults:
+  run:
+    working-directory: apps/meechain-dapp
 
 jobs:
   deploy:
