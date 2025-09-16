@@ -1,0 +1,80 @@
+name: Preview Deploy (Monorepo)
+
+on:
+  pull_request:
+    branches: [ production, feature/**, preview/** ]
+    paths:
+      - 'apps/**'
+      - 'packages/**'
+      - '.github/workflows/**'
+
+jobs:
+  detect-and-deploy:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app:
+          - name: meechain-dapp
+            path: apps/meechain-dapp
+            vercel_project_id: ${{ secrets.VERCEL_PROJECT_ID_MEECHAIN }}
+          - name: hexchain-dapp
+            path: apps/hexchain-dapp
+            vercel_project_id: ${{ secrets.VERCEL_PROJECT_ID_HEXCHAIN }}
+          - name: token-dashboard
+            path: apps/token-dashboard
+            vercel_project_id: ${{ secrets.VERCEL_PROJECT_ID_TOKENDASH }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect changes for ${{ matrix.app.name }}
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            app:
+              - '${{ matrix.app.path }}/**'
+              - 'packages/**'
+
+      - name: Setup Node
+        if: steps.changes.outputs.app == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install root deps
+        if: steps.changes.outputs.app == 'true'
+        run: npm ci
+
+      - name: Install app deps
+        if: steps.changes.outputs.app == 'true'
+        working-directory: ${{ matrix.app.path }}
+        run: npm ci
+
+      - name: Build (optional for static export)
+        if: steps.changes.outputs.app == 'true'
+        working-directory: ${{ matrix.app.path }}
+        run: |
+          if [ -f "vite.config.ts" ] || [ -f "vite.config.js" ]; then
+            npm run build
+          else
+            echo "Skipping build (serverless via Vercel build step)"
+          fi
+
+      - name: Vercel deploy (preview)
+        if: steps.changes.outputs.app == 'true'
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ matrix.app.vercel_project_id }}
+          working-directory: ${{ matrix.app.path }}
+          scope: ${{ secrets.VERCEL_SCOPE }}
+          github-comment: true
+          vercel-args: >
+            --prebuilt
+            --env VITE_CHAIN_ID=${{ secrets.VITE_CHAIN_ID }}
+            --env VITE_RPC_URL=${{ secrets.VITE_RPC_URL }}
+            --env VITE_CONTRACTS_JSON=${{ secrets.VITE_CONTRACTS_JSON }}
+            --env VITE_NETWORK=${{ github.base_ref || 'preview' }}
