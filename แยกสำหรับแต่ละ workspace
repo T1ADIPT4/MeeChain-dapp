@@ -1,0 +1,358 @@
+# Overview
+
+คุณอยากได้สองอย่าง: 
+- Deploy preview แยกสำหรับแต่ละ workspace (หลายแอปใน monorepo)
+- Config loader สำหรับ smart contract ที่ปลอดภัย ยืดหยุ่น และใช้งานง่าย
+
+ด้านล่างคือโครงที่พร้อมนำไปใช้ได้เลย ทั้ง GitHub Actions, Vercel, การตั้งค่า env/branch, และ TypeScript config loader ที่รองรับหลาย chain, หลาย environment, พร้อม validation
+
+---
+
+# Workspace‑aware preview deployments
+
+## Monorepo structure
+
+```
+.
+├─ apps/
+│  ├─ meechain-dapp/        # React/Vite หรือ Webpack
+│  ├─ hexchain-dapp/        # React/Vite หรือ Webpack
+│  └─ token-dashboard/      # React/Vite (แดชบอร์ดแยก)
+├─ packages/
+│  ├─ contracts/            # ABIs, typechain
+│  └─ config/               # shared config loader (TS)
+└─ .github/workflows/
+```
+
+- **หลักการ:** แยก Vercel Project ต่อ workspace เพื่อได้ URL preview แยกกัน, build command/config เฉพาะแต่ละแอป, และ ENV แยกอย่างปลอดภัย
+
+## Branch → preview mapping
+
+| Workspace | Preview domain | Production branch | Preview trigger |
+|---|---|---|---|
+| apps/meechain-dapp | meechain-preview.vercel.app | production | PRs to production / feature/* |
+| apps/hexchain-dapp | hexchain-preview.vercel.app | production | PRs to production / feature/* |
+| apps/token-dashboard | tokendash-preview.vercel.app | production | PRs to production / feature/* |
+
+> Sources: ตั้งค่าใน Vercel ให้แต่ละ Project มี Production Branch เป็น production และเปิด Deploy Previews for all branches
+
+## GitHub Actions: deploy preview per workspace
+
+สร้าง workflow ชุดเดียวที่ตรวจจับ path ของแต่ละแอป แล้ว deploy ไป Vercel Project ที่ตรงกัน
+
+.github/workflows/preview-deploy.yml
+```yaml
+name: Preview Deploy (Monorepo)
+
+on:
+  pull_request:
+    branches: [ production, feature/**, preview/** ]
+    paths:
+      - 'apps/**'
+      - 'packages/**'
+      - '.github/workflows/**'
+
+jobs:
+  detect-and-deploy:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app:
+          - name: meechain-dapp
+            path: apps/meechain-dapp
+            vercel_project_id: ${{ secrets.VERCEL_PROJECT_ID_MEECHAIN }}
+          - name: hexchain-dapp
+            path: apps/hexchain-dapp
+            vercel_project_id: ${{ secrets.VERCEL_PROJECT_ID_HEXCHAIN }}
+          - name: token-dashboard
+            path: apps/token-dashboard
+            vercel_project_id: ${{ secrets.VERCEL_PROJECT_ID_TOKENDASH }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect changes for ${{ matrix.app.name }}
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            app:
+              - '${{ matrix.app.path }}/**'
+              - 'packages/**'
+
+      - name: Setup Node
+        if: steps.changes.outputs.app == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install root deps
+        if: steps.changes.outputs.app == 'true'
+        run: npm ci
+
+      - name: Install app deps
+        if: steps.changes.outputs.app == 'true'
+        working-directory: ${{ matrix.app.path }}
+        run: npm ci
+
+      - name: Build (optional for static export)
+        if: steps.changes.outputs.app == 'true'
+        working-directory: ${{ matrix.app.path }}
+        run: |
+          if [ -f "vite.config.ts" ] || [ -f "vite.config.js" ]; then
+            npm run build
+          else
+            echo "Skipping build (serverless via Vercel build step)"
+          fi
+
+      - name: Vercel deploy (preview)
+        if: steps.changes.outputs.app == 'true'
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ matrix.app.vercel_project_id }}
+          working-directory: ${{ matrix.app.path }}
+          scope: ${{ secrets.VERCEL_SCOPE }}
+          github-comment: true
+          vercel-args: >
+            --prebuilt
+            --env VITE_CHAIN_ID=${{ secrets.VITE_CHAIN_ID }}
+            --env VITE_RPC_URL=${{ secrets.VITE_RPC_URL }}
+            --env VITE_CONTRACTS_JSON=${{ secrets.VITE_CONTRACTS_JSON }}
+            --env VITE_NETWORK=${{ github.base_ref || 'preview' }}
+```
+
+- **Secrets ที่ต้องมี:** VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_SCOPE, และ VERCEL_PROJECT_ID_* ต่อแอป
+- **Env สำหรับ preview:** ใช้ secrets inject ผ่าน `--env` หรือกำหนดใน Vercel Project Environment (แนะนำให้เก็บใน Vercel)
+
+## Vercel project per workspace
+
+- **Production Branch:** production
+- **Preview Deployments:** เปิดใช้งาน “All branches”
+- **Environment Variables:** ตั้งให้ครบใน “Preview” กับ “Production”
+  - **VITE_RPC_URL**, **VITE_CHAIN_ID**, **VITE_CONTRACTS_JSON**, **VITE_NETWORK**
+- **Protection:** เปิด **Password Protection** หรือ **Protection Bypass for specific members** สำหรับ Preview
+- **Domains:**
+  - meechain-dapp: meechain.app (prod), meechain-preview.vercel.app (preview)
+  - hexchain-dapp: hexchain.app, hexchain-preview.vercel.app
+  - token-dashboard: tokendash.app, tokendash-preview.vercel.app
+
+---
+
+# Config loader for smart contracts
+
+โฟกัสที่ความชัด, ปลอดภัย, และยืดหยุ่น (หลาย network, หลายเวอร์ชันของสัญญา, หลาย workspace)
+
+## Files
+
+- packages/config/contracts.json
+```json
+{
+  "meechain": {
+    "chainId": 1997,
+    "rpcUrl": "https://rpc.meechain.network",
+    "contracts": {
+      "MeeToken": {
+        "address": "0xYourProdAddress",
+        "abiPath": "packages/contracts/abi/MeeToken.json",
+        "decimals": 18,
+        "version": "1.0.0"
+      }
+    }
+  },
+  "meechain-test": {
+    "chainId": 1998,
+    "rpcUrl": "https://rpc-test.meechain.network",
+    "contracts": {
+      "MeeToken": {
+        "address": "0xYourTestAddress",
+        "abiPath": "packages/contracts/abi/MeeToken.json",
+        "decimals": 18,
+        "version": "1.0.0"
+      }
+    }
+  }
+}
+```
+
+- apps/*/.env (ใน Vercel/Preview)
+```
+VITE_NETWORK=meechain-test
+VITE_CONTRACT_NAME=MeeToken
+```
+
+## Loader with validation
+
+packages/config/src/loader.ts
+```ts
+import { z } from 'zod'
+
+const ContractSchema = z.object({
+  address: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
+  abiPath: z.string(),
+  decimals: z.number().int().min(0).max(36),
+  version: z.string()
+})
+
+const NetworkSchema = z.object({
+  chainId: z.number().int().positive(),
+  rpcUrl: z.string().url(),
+  contracts: z.record(z.string(), ContractSchema)
+})
+
+const RootSchema = z.record(z.string(), NetworkSchema)
+
+type RootConfig = z.infer<typeof RootSchema>
+type NetworkConfig = z.infer<typeof NetworkSchema>
+
+let cached: { root?: RootConfig } = {}
+
+export function loadRootConfig(): RootConfig {
+  if (cached.root) return cached.root
+  // Use import assertion to allow bundlers to include JSON
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const raw = require('../contracts.json')
+  const parsed = RootSchema.parse(raw)
+  cached.root = parsed
+  return parsed
+}
+
+export function getNetworkConfig(name: string): NetworkConfig {
+  const root = loadRootConfig()
+  const cfg = root[name]
+  if (!cfg) throw new Error(`Network config not found: ${name}`)
+  return cfg
+}
+
+export function getContractConfig(networkName: string, contractName: string) {
+  const net = getNetworkConfig(networkName)
+  const c = net.contracts[contractName]
+  if (!c) throw new Error(`Contract not found: ${networkName}.${contractName}`)
+  return { network: net, contract: c }
+}
+```
+
+## Ethers v6 integration
+
+packages/config/src/provider.ts
+```ts
+import { BrowserProvider, JsonRpcProvider, Contract, parseUnits } from 'ethers'
+import abiMeeToken from '../../contracts/abi/MeeToken.json'
+import { getContractConfig } from './loader'
+
+type SignerMode = 'browser' | 'server'
+
+export function makeProvider(mode: SignerMode, rpcUrl: string) {
+  if (mode === 'browser' && typeof window !== 'undefined' && (window as any).ethereum) {
+    return new BrowserProvider((window as any).ethereum)
+  }
+  return new JsonRpcProvider(rpcUrl)
+}
+
+export async function connectMeeToken(opts?: { mode?: SignerMode; networkName?: string; contractName?: string }) {
+  const networkName = opts?.networkName || import.meta.env.VITE_NETWORK || 'meechain'
+  const contractName = opts?.contractName || import.meta.env.VITE_CONTRACT_NAME || 'MeeToken'
+
+  const { network, contract } = getContractConfig(networkName, contractName)
+  const provider = makeProvider(opts?.mode || 'browser', network.rpcUrl)
+  const signer = 'getSigner' in provider ? await (provider as any).getSigner() : undefined
+
+  const abi = abiMeeToken // or dynamic import by path if needed
+  const instance = new Contract(contract.address, abi, signer || (provider as any))
+
+  const helpers = {
+    decimals: contract.decimals,
+    parse(amount: string) { return parseUnits(amount, contract.decimals) }
+  }
+
+  return { instance, provider, signer, network, contract, helpers }
+}
+```
+
+## Usage in app
+
+apps/token-dashboard/src/blockchain/meeToken.ts
+```ts
+import { connectMeeToken } from '@meechain/config/provider'
+
+export async function getTotalSupply() {
+  const { instance } = await connectMeeToken()
+  const v = await instance.totalSupply()
+  return v.toString()
+}
+
+export async function mint(to: string, amount: string) {
+  const { instance, helpers } = await connectMeeToken()
+  const tx = await instance.mint(to, helpers.parse(amount))
+  await tx.wait()
+}
+
+export async function transfer(to: string, amount: string) {
+  const { instance, helpers } = await connectMeeToken()
+  const tx = await instance.transfer(to, helpers.parse(amount))
+  await tx.wait()
+}
+```
+
+- **ประโยชน์:** แต่ละ workspace ใช้ loader เดียวกัน เปลี่ยน network/contract ด้วย ENV; Preview ชี้ test config, Production ชี้ main config ได้อัตโนมัติ
+
+---
+
+# Environment strategy
+
+- **Per‑project (Vercel):**
+  - **Preview:** 
+    - VITE_NETWORK=meechain-test
+    - VITE_RPC_URL=ตั้งใน Vercel (ถ้าอยาก override dynamic)
+    - VITE_CONTRACTS_JSON=ไม่จำเป็นถ้า bundle ไฟล์ JSON อยู่แล้ว
+  - **Production:**
+    - VITE_NETWORK=meechain
+    - ป้องกันการใช้ testnet address
+
+- **Local dev:**
+  - **.env.local:**
+    - VITE_NETWORK=meechain-test
+    - เพิ่ม KEY อื่นๆ เฉพาะ local เท่านั้น
+
+- **Secrets:**
+  - **ไม่** commit private keys
+  - ใช้ Wallet ผู้ใช้ (BrowserProvider) สำหรับ sign ใน frontend
+  - Server-side jobs (ถ้ามี) ใช้ server wallet ผ่าน serverless function/cron แยก project
+
+---
+
+# Security and DX
+
+- **Validation:** ใช้ zod ยืนยันรูปแบบ address/rpc/decimals ก่อนรัน
+- **Runtime checks:** ถ้าไม่มี MetaMask → แสดงคำแนะนำติดตั้ง/เชื่อมต่อ
+- **Feature flags:** ใช้ ENV เช่น VITE_FEATURE_MINT=true เพื่อเปิด/ปิดปุ่มใน preview
+- **Auth preview:** ใส่ middleware บน frontend (basic auth) หรือ Vercel password protection เฉพาะ Preview
+- **DX:** ตั้ง path alias “@/” ให้แต่ละ workspace ลด relative hell
+
+vite.config.ts (ตัวอย่าง)
+```ts
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import path from 'path'
+
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: { '@': path.resolve(__dirname, './src') }
+  }
+})
+```
+
+---
+
+# Next steps
+
+- **กำหนด Vercel Projects** แยกตาม workspace และเพิ่ม ENV ทั้ง Preview/Production
+- **เพิ่ม secrets ใน GitHub**: VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_SCOPE, VERCEL_PROJECT_ID_*
+- **วาง packages/config** และโยงใช้งานในแต่ละแอป
+- **ทดสอบ PR**: สร้าง branch feature/* แก้ไฟล์ใน apps/meechain-dapp → ตรวจว่าได้ Preview URL เฉพาะแอปนั้น
+- **เพิ่ม Observability**: log URL preview ลง PR comment และแสดง network/contract ที่ใช้อยู่ใน UI dashboard เพื่อหลีกเลี่ยงผิด network
+
+ถ้าคุณแชร์ repo structure ปัจจุบัน ผมจะ map ให้ครบทุก workspace พร้อมไฟล์จริงที่ต้องเพิ่ม/แก้ และตรวจ CI/CD ให้ deploy ได้ตั้งแต่รอบแรกแบบไร้รอยต่อครับ
