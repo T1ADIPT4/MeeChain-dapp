@@ -50,11 +50,12 @@ jobs:
         uses: actions/deploy-pages@v2
         with:
   jobs:
-  deploy:
+   deploy:
     runs-on: ubuntu-latest
-     strategy:
-        matrix:
-         nclude:
+       
+  strategy:
+    matrix:
+    nclude:
       - workspace: hexchain-dapp
         network: mainnet
       - workspace: meechain-dapp
@@ -62,17 +63,19 @@ jobs:
       - workspace: token-dashboar    # React/Vite หรือ Webpack
         network: mainnet
    
-   steps:
+    steps:
       - name: Checkout
         uses: actions/checkout@v4
         # ...ขั้นตอนอื่น ๆ
 
       - name: Skip deploy if config invalid
-        run: | node scripts/validate-config.js ${{ matrix.workspace }} ${{ matrix.network }} || echo "Skipping deploy"
-     
+        run: |
+        node scripts/validate-config.js ${{ matrix.workspace }} ${{ matrix.network }} || echo "Skipping deploy"
+        
       - name: Validate config
         id: validate
-        run: | node scripts/validate-config.js ${{ matrix.workspace }} ${{ matrix.network }} || echo "::set-output name=fallback::true"
+        run: |
+        node scripts/validate-config.js ${{ matrix.workspace }} ${{ matrix.network }} || echo "::set-output name=fallback::true"
 
       - name: Set subdomain
         run: |
