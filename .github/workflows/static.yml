@@ -52,15 +52,15 @@ jobs:
   jobs:
   deploy:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
+     strategy:
+        matrix:
+         nclude:
       - workspace: hexchain-dapp
-          network: mainnet
+        network: mainnet
       - workspace: meechain-dapp
-          network: mainnet
+        network: mainnet
       - workspace: token-dashboar    # React/Vite หรือ Webpack
-          network: mainnet
+        network: mainnet
    
    steps:
       - name: Checkout
