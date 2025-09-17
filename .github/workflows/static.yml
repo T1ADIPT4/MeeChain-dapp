@@ -94,4 +94,44 @@ jobs:
         subdomain: ${{ env.SUBDOMAIN }}
 
            subdomain: ${{ matrix.workspace }}, ${{ matrix.network }}
+          
+ // scripts/validate-config.ts
+import fs from 'fs'
+import path from 'path'
+import { z } from 'zod'
+
+const workspace = process.argv[2]
+const network = process.argv[3] || 'mainnet'
+
+const configPath = path.resolve(__dirname, `../configs/${workspace}/${network}.json`)
+const fallbackPath = path.resolve(__dirname, `../configs/fallback/${network}.json`)
+
+const ConfigSchema = z.object({
+  rpcUrl: z.string().url(),
+  contractAddress: z.string().min(1),
+  apiKey: z.string().min(1),
+  // เพิ่ม field ตามที่จำเป็น
+})
+
+function loadConfig(filePath: string) {
+  if (!fs.existsSync(filePath)) return null
+  const raw = fs.readFileSync(filePath, 'utf-8')
+  return JSON.parse(raw)
+}
+
+const config = loadConfig(configPath)
+const fallback = loadConfig(fallbackPath)
+
+try {
+  ConfigSchema.parse(config)
+  console.log(`✅ Valid config for ${workspace}/${network}`)
+} catch (err) {
+  if (fallback) {
+    console.warn(`⚠️ Invalid config for ${workspace}/${network}, using fallback`)
+    fs.writeFileSync(configPath, JSON.stringify(fallback, null, 2))
+  } else {
+    console.error(`❌ No valid config or fallback for ${workspace}/${network}`)
+    process.exit(1)
+  }
+}
                
