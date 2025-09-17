@@ -1,43 +1,62 @@
-# Simple workflow for deploying static content to GitHub Pages
-name: Deploy static content to Pages
+name: Deploy Preview
 
 on:
-  # Runs on pushes targeting the default branch
   push:
-    branches: ["production"]
-
-  # Allows you to run this workflow manually from the Actions tab
-  workflow_dispatch:
-
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
-# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
-  # Single deploy job since we're just deploying
   deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        workspace: [meechain-dapp, hexchain-dapp, token-dashboard] # เพิ่ม workspace ตามต้องการ
+
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/checkout@v3
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          # Upload entire repository
-          path: '.'
+          node-version: 18
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build workspace
+        run: npm run build --workspace=${{ matrix.workspace }}
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v3
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v1
+        with:
+          path: ./packages/${{ matrix.workspace }}/dist
+          retention-days: 1
+
+      - name: Validate config
+        run: node scripts/validate-config.js ${{ matrix.workspace }}
+
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v2
+        with:
+         strategy:
+  matrix:
+    include:
+      - workspace: strategy:
+  matrix:
+    include:
+      - workspace: hexchain-dapp
+        network: mainnet
+      - workspace: meechain-dapp
+        network: mainnet
+      - workspace: token-dashboar    # React/Vite หรือ Webpack
+        network: mainnet
+
+          subdomain: ${{ matrix.workspace }}, ${{ matrix.network }}
