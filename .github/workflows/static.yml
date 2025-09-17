@@ -62,10 +62,9 @@ jobs:
         with:
           subdomain: ${{ env.SUBDOMAIN }}
 
-''
- import fs from 'fs'
- import path from 'path'
- import { z } from 'zod'
+import fs from 'fs'
+import path from 'path'
+import { z } from 'zod'
 
 const workspace = process.argv[2]
 const network = process.argv[3] || 'mainnet'
@@ -101,4 +100,3 @@ try {
     process.exit(1)
   }
 }
-''
