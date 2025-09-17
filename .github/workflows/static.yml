@@ -49,18 +49,23 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v2
         with:
-         strategy:
-  matrix:
-    include:
-      - workspace: strategy:
-  matrix:
-    include:
+  jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
       - workspace: hexchain-dapp
-        network: mainnet
+          network: mainnet
       - workspace: meechain-dapp
-        network: mainnet
+          network: mainnet
       - workspace: token-dashboar    # React/Vite หรือ Webpack
-        network: mainnet
+          network: mainnet
+   
+   steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        # ...ขั้นตอนอื่น ๆ
 
       - name: Skip deploy if config invalid
         run: | node scripts/validate-config.js ${{ matrix.workspace }} ${{ matrix.network }} || echo "Skipping deploy"
@@ -70,32 +75,21 @@ jobs:
         run: | node scripts/validate-config.js ${{ matrix.workspace }} ${{ matrix.network }} || echo "::set-output name=fallback::true"
 
       - name: Set subdomain
-        run: |if [[ "${{ steps.validate.outputs.fallback }}" == "true" ]]; the echo "SUBDOMAIN=fallback.${{ matrix.network }}" >> $GITHUB_ENV
-        else
-    echo "SUBDOMAIN=${{ matrix.workspace }}.${{ matrix.network }}" >> $GITHUB_ENV
-    
-    f - name: Validate config
-        id: validate
-        run: |  node scripts/validate-config.js ${{ matrix.workspace }} ${{ matrix.network }} || echo "::set-output name=fallback::true"
-
-      - name: Set subdomain
-        run: |if [[ "${{ steps.validate.outputs.fallback }}" == "true" ]]; then
-        echo "SUBDOMAIN=fallback.${{ matrix.network }}" >> $GITHUB_ENV
+        run: |
+        if [[ "${{ steps.validate.outputs.fallback }}" == "true" ]]; then echo "SUBDOMAIN=fallback.${{ matrix.network }}" >> $GITHUB_ENV
         else
         echo "SUBDOMAIN=${{ matrix.workspace }}.${{ matrix.network }}" >> $GITHUB_ENV
-    fi
+        fi
+     - name: Validate config
+        id: validate
+        run: |
+        node scripts/validate-config.js ${{ matrix.workspace }} ${{ matrix.network }} || echo "::set-output name=fallback::true"
 
       - name: Deploy to Vercel
         uses: vercel/action@v1
         with:
         subdomain: ${{ env.SUBDOMAIN }}
-     i
 
-      - name: Deploy to Vercel
-        uses: vercel/action@v1
-        with:
-        subdomain: ${{ env.SUBDOMAIN }}
-           
            subdomain: ${{ matrix.workspace }}, ${{ matrix.network }}
                
 // scripts/validate-config.ts
