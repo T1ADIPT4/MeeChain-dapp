@@ -2,22 +2,26 @@ name: Deploy Preview
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
-    branches:
-      - main
+    branches: [main]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        workspace: [meechain-dapp, hexchain-dapp, token-dashboard] # เพิ่ม workspace ตามต้องการ
+        include:
+          - workspace: meechain-dapp
+            network: mainnet
+          - workspace: hexchain-dapp
+            network: mainnet
+          - workspace: token-dashboard
+            network: mainnet
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -26,9 +30,19 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-        
-      - name: Validate config with fallback
-        run: node scripts/validate-config.js ${{ matrix.workspace }} ${{ matrix.network }}
+
+      - name: Validate config
+        id: validate
+        run: |
+          node scripts/validate-config.js ${{ matrix.workspace }} ${{ matrix.network }} || echo "::set-output name=fallback::true"
+
+      - name: Set subdomain
+        run: |
+          if [[ "${{ steps.validate.outputs.fallback }}" == "true" ]]; then
+            echo "SUBDOMAIN=fallback.${{ matrix.network }}" >> $GITHUB_ENV
+          else
+            echo "SUBDOMAIN=${{ matrix.workspace }}.${{ matrix.network }}" >> $GITHUB_ENV
+          fi
 
       - name: Build workspace
         run: npm run build --workspace=${{ matrix.workspace }}
@@ -42,58 +56,12 @@ jobs:
           path: ./packages/${{ matrix.workspace }}/dist
           retention-days: 1
 
-      - name: Validate config
-        run: node scripts/validate-config.js ${{ matrix.workspace }}
-
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v2
+        uses: vercel/action
         with:
-  jobs:
-   deploy:
-    runs-on: ubuntu-latest
-       
-  strategy:
-    matrix:
-    nclude:
-      - workspace: hexchain-dapp
-        network: mainnet
-      - workspace: meechain-dapp
-        network: mainnet
-      - workspace: token-dashboar    # React/Vite หรือ Webpack
-        network: mainnet
-   
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        # ...ขั้นตอนอื่น ๆ
+          subdomain: ${{ env.SUBDOMAIN }}
 
-      - name: Skip deploy if config invalid
-  run: |
-    node scripts/validate-config.js ${{ matrix.workspace }} ${{ matrix.network }} || echo "Skipping deploy"
-    
-      - name: Validate config
-        id: validate
-        run: |
-        node scripts/validate-config.js ${{ matrix.workspace }} ${{ matrix.network }} || echo "::set-output name=fallback::true"
-
-      - name: Set subdomain
-        run: |
-        if [[ "${{ steps.validate.outputs.fallback }}" == "true" ]]; then echo "SUBDOMAIN=fallback.${{ matrix.network }}" >> $GITHUB_ENV
-        else
-        echo "SUBDOMAIN=${{ matrix.workspace }}.${{ matrix.network }}" >> $GITHUB_ENV
-        fi
-     - name: Validate config
-        id: validate
-        run: |
-        node scripts/validate-config.js ${{ matrix.workspace }} ${{ matrix.network }} || echo "::set-output name=fallback::true"
-
-      - name: Deploy to Vercel
-        uses: vercel/action@v1
-        with:
-        subdomain: ${{ env.SUBDOMAIN }}
-
-           subdomain: ${{ matrix.workspace }}, ${{ matrix.network }}
           
  // scripts/validate-config.ts
 import fs from 'fs'
