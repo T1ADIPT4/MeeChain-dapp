@@ -69,9 +69,9 @@ jobs:
         # ...ขั้นตอนอื่น ๆ
 
       - name: Skip deploy if config invalid
-        run: |
-        node scripts/validate-config.js ${{ matrix.workspace }} ${{ matrix.network }} || echo "Skipping deploy"
-        
+  run: |
+    node scripts/validate-config.js ${{ matrix.workspace }} ${{ matrix.network }} || echo "Skipping deploy"
+    
       - name: Validate config
         id: validate
         run: |
@@ -95,7 +95,8 @@ jobs:
 
            subdomain: ${{ matrix.workspace }}, ${{ matrix.network }}
                
-// scripts/validate-config.ts
+
+ // scripts/validate-config.ts
 import fs from 'fs'
 import path from 'path'
 import { z } from 'zod'
