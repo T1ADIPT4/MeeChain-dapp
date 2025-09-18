@@ -16,44 +16,28 @@ export default function TokenDashboard() {
     fetchSupply()
   }, [])
 
-  async function fetchSupply() {
-    try {
-      const s = await getTotalSupply()
-      setSupply(s)
-    } catch (err) {
-      setError('ไม่สามารถโหลด total supply ได้')
-    }
+async function handleMint() {
+  setError(null)
+
+  if (!mintAmount || isNaN(mintAmount) || Number(mintAmount) <= 0 || !Number.isInteger(Number(mintAmount))) {
+    setError('กรุณากรอกจำนวนที่ต้องการ mint เป็นจำนวนเต็มบวก')
+    return
   }
 
-  const handleMint = async () => {
-    setLoadingMint(true)
-    setError('')
-    setSuccess('')
-    try {
-      await mint(mintTo, mintAmount)
-      await fetchSupply()
-      setSuccess(`✅ Minted ${mintAmount} tokens to ${mintTo}`)
-    } catch (err) {
-      setError('❌ Mint ล้มเหลว')
-    } finally {
-      setLoadingMint(false)
-    }
+  if (!contractAddress || typeof contractAddress !== 'string' || contractAddress.length !== 42) {
+    setError('Contract address ไม่ถูกต้อง')
+    return
   }
 
-  const handleTransfer = async () => {
-    setLoadingTransfer(true)
-    setError('')
-    setSuccess('')
-    try {
-      await transfer(transferTo, transferAmount)
-      await fetchSupply()
-      setSuccess(`✅ Transferred ${transferAmount} tokens to ${transferTo}`)
-    } catch (err) {
-      setError('❌ Transfer ล้มเหลว')
-    } finally {
-      setLoadingTransfer(false)
-    }
+  setLoadingMint(true)
+  try {
+    await mintToken(contractAddress, BigInt(mintAmount))
+  } catch (err) {
+    setError('Mint ล้มเหลว: ' + (err?.message || err))
+  } finally {
+    setLoadingMint(false)
   }
+}
 
   return (
     <div style={{ padding: '2rem', fontFamily: 'sans-serif' }}>
