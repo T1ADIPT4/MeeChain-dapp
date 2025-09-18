@@ -8,27 +8,24 @@ const [loadingMint, setLoadingMint] = useState(false)
 const [error, setError] = useState(null)
 
 async function handleMint() {
-  if (!mintAmount || isNaN(mintAmount) || Number(mintAmount) <= 0) {
-    setError('Invalid mint amount')
+  setError(null)
+
+  if (!mintAmount || isNaN(mintAmount) || Number(mintAmount) <= 0 || !Number.isInteger(Number(mintAmount))) {
+    setError('กรุณากรอกจำนวนที่ต้องการ mint เป็นจำนวนเต็มบวก')
     return
   }
+
+  if (!contractAddress || typeof contractAddress !== 'string' || contractAddress.length !== 42) {
+    setError('Contract address ไม่ถูกต้อง')
+    return
+  }
+
   setLoadingMint(true)
-  setError(null)
   try {
     await mintToken(contractAddress, BigInt(mintAmount))
   } catch (err) {
-    setError('Mint ล้มเหลว')
+    setError('Mint ล้มเหลว: ' + (err?.message || err))
   } finally {
     setLoadingMint(false)
   }
-}
-
-// In meeToken.js
-export async function mintToken(address, amount) {
-  return walletClient.writeContract({
-    address,
-    abi,
-    functionName: 'mint',
-    args: [amount],
-  })
 }
