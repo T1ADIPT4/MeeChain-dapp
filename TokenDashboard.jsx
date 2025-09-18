@@ -1,105 +1,52 @@
-import { useEffect, useState } from 'react'
-import { mint, transfer, getTotalSupply } from '../blockchain/meeToken'
+import { createWalletClient, custom } from 'viem'
+import { hardhat } from 'viem/chains'
+import { abi } from '../artifacts/contracts/MeeToken.sol/MeeToken.json'
+import { mintToken, transferToken } from '../blockchain/meeToken'
 
-export default function TokenDashboard() {
-  const [supply, setSupply] = useState('')
-  const [mintTo, setMintTo] = useState('')
-  const [mintAmount, setMintAmount] = useState('')
-  const [transferTo, setTransferTo] = useState('')
-  const [transferAmount, setTransferAmount] = useState('')
-  const [loadingMint, setLoadingMint] = useState(false)
-  const [loadingTransfer, setLoadingTransfer] = useState(false)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
+// สร้าง client ที่เชื่อมกับ wallet (เช่น MetaMask)
+const walletClient = createWalletClient({
+  chain: hardhat,
+  transport: custom(window.ethereum),
+})
 
-  useEffect(() => {
-    fetchSupply()
-  }, [])
+async function handleMint() {
+  await mintToken(contractAddress, BigInt(mintAmount), setLoadingMint, setError)
+}
 
-  async function fetchSupply() {
-    try {
-      const s = await getTotalSupply()
-      setSupply(s)
-    } catch (err) {
-      setError('ไม่สามารถโหลด total supply ได้')
-    }
+export async function mintToken(address: `0x${string}`, amount: bigint, setLoading: Function, setError: Function) {
+  try {
+    setLoading(true)
+    await walletClient.writeContract({
+      address,
+      abi,
+      functionName: 'mint',
+      args: [amount],
+    })
+  } catch (err) {
+    console.error(err)
+    setError('Mint ล้มเหลว')
+  } finally {
+    setLoading(false)
   }
+}
 
-  const handleMint = async () => {
-    setLoadingMint(true)
-    setError('')
-    setSuccess('')
-    try {
-      await mint(mintTo, mintAmount)
-      await fetchSupply()
-      setSuccess(`✅ Minted ${mintAmount} tokens to ${mintTo}`)
-    } catch (err) {
-      setError('❌ Mint ล้มเหลว')
-    } finally {
-      setLoadingMint(false)
-    }
+async function handleTransfer() {
+  await transferToken(contractAddress, transferTo, BigInt(transferAmount), setLoadingTransfer, setError)
+}
+
+export async function transferToken(address: `0x${string}`, to: `0x${string}`, amount: bigint, setLoading: Function, setError: Function) {
+  try {
+    setLoading(true)
+    await walletClient.writeContract({
+      address,
+      abi,
+      functionName: 'transfer',
+      args: [to, amount],
+    })
+  } catch (err) {
+    console.error(err)
+    setError('Transfer ล้มเหลว')
+  } finally {
+    setLoading(false)
   }
-
-  const handleTransfer = async () => {
-    setLoadingTransfer(true)
-    setError('')
-    setSuccess('')
-    try {
-      await transfer(transferTo, transferAmount)
-      await fetchSupply()
-      setSuccess(`✅ Transferred ${transferAmount} tokens to ${transferTo}`)
-    } catch (err) {
-      setError('❌ Transfer ล้มเหลว')
-    } finally {
-      setLoadingTransfer(false)
-    }
-  }
-
-  return (
-    <div style={{ padding: '2rem', fontFamily: 'sans-serif' }}>
-      <h2>🪙 MeeToken Dashboard</h2>
-      <p>📦 Total Supply: <strong>{supply}</strong></p>
-
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-      {success && <p style={{ color: 'green' }}>{success}</p>}
-
-      <div style={{ marginTop: '2rem' }}>
-        <h3>Mint Tokens</h3>
-        <input
-          placeholder="To address"
-          value={mintTo}
-          onChange={e => setMintTo(e.target.value)}
-          style={{ marginRight: '1rem' }}
-        />
-        <input
-          placeholder="Amount"
-          value={mintAmount}
-          onChange={e => setMintAmount(e.target.value)}
-          style={{ marginRight: '1rem' }}
-        />
-        <button onClick={handleMint} disabled={loadingMint}>
-          {loadingMint ? 'Minting...' : 'Mint'}
-        </button>
-      </div>
-
-      <div style={{ marginTop: '2rem' }}>
-        <h3>Transfer Tokens</h3>
-        <input
-          placeholder="To address"
-          value={transferTo}
-          onChange={e => setTransferTo(e.target.value)}
-          style={{ marginRight: '1rem' }}
-        />
-        <input
-          placeholder="Amount"
-          value={transferAmount}
-          onChange={e => setTransferAmount(e.target.value)}
-          style={{ marginRight: '1rem' }}
-        />
-        <button onClick={handleTransfer} disabled={loadingTransfer}>
-          {loadingTransfer ? 'Transferring...' : 'Transfer'}
-        </button>
-      </div>
-    </div>
-  )
 }
