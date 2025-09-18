@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { mint, transfer, getTotalSupply } from '../blockchain/meeToken'
+import { mintToken, transferToken } from '../blockchain/meeToken'
 
 export default function TokenDashboard() {
   const [supply, setSupply] = useState('')
