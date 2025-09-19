@@ -1,1 +1,17 @@
+name: Preview
 
+on:
+  pull_request:
+    branches: [main, production, "feature/**", "preview/**"]
+
+jobs:
+  deploy-meechain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Deploy preview
+        uses: ./.github/actions/deploy-preview
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_MEECHAIN }}
