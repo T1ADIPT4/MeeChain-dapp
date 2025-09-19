@@ -1,4 +1,3 @@
-// src/config/loader.ts
 import previewA from './deploy.preview.a.json';
 import previewB from './deploy.preview.b.json';
 import prodA from './deploy.prod.a.json';
