@@ -1,0 +1,29 @@
+name: Preview Deploy
+
+on:
+  pull_request:
+    branches: [main, production, "feature/**", "preview/**"]
+
+jobs:
+  deploy-meechain:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/meechain-dapp
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Deploy to Vercel (Preview)
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_MEECHAIN }}
