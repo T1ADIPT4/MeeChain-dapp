@@ -33,6 +33,20 @@ jobs:
       - name: Build ${{ matrix.app.name }}
         run: pnpm run build
         working-directory: ${{ matrix.app.path }}
+        
+      - name: Log deployment
+        if: always()
+        run: |
+         curl -X POST https://your-domain/api/deploy/log \
+         -H "Authorization: Bearer $VERCEL_TOKEN" \
+         -H "Content-Type: application/json" \
+         -d '{
+         "workspace": "${{ matrix.workspace }}",
+         "network": "${{ matrix.network }}",
+         "url": "${{ env.DEPLOY_URL }}",
+         "commit": "${{ github.sha }}",
+         "status": "${{ job.status }}"
+         }'
 
       - name: Deploy ${{ matrix.app.name }} to Vercel
         uses: amondnet/vercel-action@v25
@@ -43,3 +57,4 @@ jobs:
           vercel-args: '--prod'
         env:
           VERCEL_SCOPE: ${{ secrets.VERCEL_SCOPE }}
+
