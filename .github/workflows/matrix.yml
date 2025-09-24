@@ -16,8 +16,8 @@ jobs:
     strategy:
       matrix:
         app:
-          - name: mechanic-dapp
-            path: apps/mechanic-dapp
+          - name: meechain-dapp
+            path: apps/meechaib-dapp
             secret: VERCEL_PROJECT_ID_MECHANIC
           - name: project-koi
             path: apps/project-koi
@@ -37,7 +37,7 @@ jobs:
       - name: Log deployment
         if: always()
         run: |
-         curl -X POST https://your-domain/api/deploy/log \
+         curl -X POST https://meechain.run.place/api/deploy/log \
          -H "Authorization: Bearer $VERCEL_TOKEN" \
          -H "Content-Type: application/json" \
          -d '{
@@ -49,7 +49,7 @@ jobs:
          }'
 
       - name: Deploy ${{ matrix.app.name }} to Vercel
-        uses: amondnet/vercel-action@v25
+        uses: actions/vercel-action@v25
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
