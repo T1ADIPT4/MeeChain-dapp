@@ -1,7 +1,3 @@
-import { PrismaClient } from 'app/generated-prisma-client'
-import { withAccelerate } from '@prisma/extension-accelerate'
-
-const prisma = new PrismaClient().$extends(withAccelerate())
 // Define database connection via the `DATABASE_URL` env var
 datasource db {
   provider = "postgresql"
