@@ -1,0 +1,3 @@
+# keep Neon credentials secure: do not expose them to client-side code
+
+DATABASE_URL='postgresql://neondb_owner:npg_7JXjiZREv3Ht@ep-bold-dream-adqnczyo-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require'
