@@ -25,10 +25,13 @@ async function handleMint() {
   setLoadingMint(true);
   try {
     await mintToken(contractAddress, BigInt(mintAmount));
+  }
+    
   if (!contractAddress || typeof contractAddress !== 'string' || !/^0x[a-fA-F0-9]{40}$/.test(contractAddress)) {
     setError('Contract address ไม่ถูกต้อง');
     return;
     alert('Mint สำเร็จ!');
+  }
   } catch (err) {
     // แสดง error จากระบบหรือ Blockchain แบบละเอียด
     setError('Mint ล้มเหลว: ' + (err?.message || JSON.stringify(err)));
