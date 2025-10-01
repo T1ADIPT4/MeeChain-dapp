@@ -1,3 +1,5 @@
+import { ethers } from "hardhadt";
+import { expect } from "chai";
 
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
