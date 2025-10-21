@@ -17,7 +17,7 @@ jobs:
       matrix:
         app:
           - name: meechain-dapp
-            path: apps/meechaib-dapp
+            path: apps/meechain-dapp
             secret: VERCEL_PROJECT_ID_MECHANIC
           - name: project-koi
             path: apps/project-koi
