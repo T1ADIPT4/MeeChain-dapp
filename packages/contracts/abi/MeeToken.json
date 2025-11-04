@@ -1,0 +1,26 @@
+{
+  "meechain": {
+    "chainId": 1997,
+    "rpcUrl": "https://rpc.meechain.network",
+    "contracts": {
+      "MeeToken": {
+        "address": "0xYourProdAddress",
+        "abiPath": "packages/contracts/abi/MeeToken.json",
+        "decimals": 18,
+        "version": "1.0.0"
+      }
+    }
+  },
+  "meechain-test": {
+    "chainId": 1998,
+    "rpcUrl": "https://rpc-test.meechain.network",
+    "contracts": {
+      "MeeToken": {
+        "address": "0xYourTestAddress",
+        "abiPath": "packages/contracts/abi/MeeToken.json",
+        "decimals": 18,
+        "version": "1.0.0"
+      }
+    }
+  }
+}
